@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CLAUFE — Threading the Needle</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Permanent+Marker&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #060606;
+      color: #ffffff;
+      font-family: 'Space Mono', monospace;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .font-scribble {
+      font-family: 'Permanent Marker', cursive;
+    }
+
+    .font-hand {
+      font-family: 'Caveat', cursive;
+    }
+
+    /* Subtle hand-drawn crosshatch paper grain */
+    .scribble-canvas {
+      background-color: #060606;
+      background-image:
+        radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 0),
+        radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 0);
+      background-size: 28px 28px;
+      background-position: 0 0, 14px 14px;
+    }
+
+    /* Hand-drawn irregular border */
+    .sketch-box {
+      border: 2px solid #ffffff;
+      border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+      box-shadow: 4px 4px 0px rgba(255, 255, 255, 0.22);
+    }
+
+    .sketch-btn {
+      border: 2px solid #ffffff;
+      border-radius: 18px 240px 22px 210px/210px 18px 240px 22px;
+      box-shadow: 3px 3px 0px #ffffff;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .sketch-btn:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0px #ffffff;
+    }
+
+    .sketch-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0px #ffffff;
+    }
+
+    .sketch-input {
+      border: 2px solid #ffffff;
+      border-radius: 12px 180px 14px 160px/160px 14px 180px 12px;
+    }
+
+    @keyframes drawThread {
+      0% {
+        stroke-dashoffset: 620;
+      }
+      100% {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    @keyframes needleSketch {
+      0%, 100% {
+        transform: translate(0px, 0px) rotate(-12deg);
+      }
+      50% {
+        transform: translate(8px, -6px) rotate(-6deg);
+      }
+    }
+
+    @keyframes scribbleFloat {
+      0%, 100% {
+        transform: translateY(0px) rotate(-1deg);
+      }
+      50% {
+        transform: translateY(-4px) rotate(1deg);
+      }
+    }
+
+    .animate-draw {
+      stroke-dasharray: 620;
+      animation: drawThread 4.2s ease-in-out infinite alternate;
+    }
+
+    .animate-needle-sketch {
+      animation: needleSketch 2.8s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    .animate-float {
+      animation: scribbleFloat 5s ease-in-out infinite;
+    }
+
+    .reveal-box {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transform: translateY(8px);
+      transition: max-height 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 0.3s ease,
+                  transform 0.3s ease;
+    }
+
+    .reveal-box.is-open {
+      max-height: 280px;
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body class="scribble-canvas min-h-screen flex flex-col justify-between selection:bg-white selection:text-black overflow-x-hidden">
+
+  <!-- Decorative Corner Scribbles (Pure B&W SVG) -->
+  <svg class="fixed top-14 left-4 w-24 h-24 text-white/15 pointer-events-none hidden sm:block" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+    <path d="M10 30 Q 30 5, 45 28 T 80 18 M18 55 C 35 40, 50 75, 72 48" />
+  </svg>
+  <svg class="fixed bottom-14 right-4 w-28 h-28 text-white/15 pointer-events-none hidden sm:block" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+    <path d="M15 75 Q 40 35, 60 70 T 90 40 M25 25 L 40 40 M40 25 L 25 40" />
+  </svg>
+
+  <!-- Minimal Scribbled Header -->
+  <header class="w-full px-6 sm:px-10 py-5 flex items-center justify-between border-b border-white/15 border-dashed">
+    <div class="flex flex-col">
+      <span class="font-scribble text-xl sm:text-2xl tracking-[0.2em] uppercase text-white">CLAUFE</span>
+      <!-- Hand-drawn underline -->
+      <svg class="w-24 h-2 -mt-0.5 text-white" viewBox="0 0 120 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M2 6 Q 35 2, 65 6 T 118 4" />
+      </svg>
+    </div>
+
+    <div class="flex items-center gap-2 text-xs tracking-[0.18em] uppercase text-neutral-300">
+      <span class="inline-block w-2 h-2 rounded-full bg-white animate-pulse"></span>
+      <span class="font-hand text-lg tracking-wider lowercase">in the atelier...</span>
+    </div>
+  </header>
+
+  <!-- Main Centerpiece -->
+  <main class="flex-1 flex flex-col items-center justify-center px-5 py-12 sm:py-16">
+    <div class="w-full max-w-2xl mx-auto text-center flex flex-col items-center">
+
+      <!-- Creative Scribbled Needle & Thread Sketch Frame -->
+      <div class="sketch-box bg-black/90 px-6 py-7 sm:px-10 sm:py-8 mb-9 w-full max-w-md relative animate-float">
+        <div class="font-hand text-lg text-neutral-400 tracking-wide mb-2">
+          ~ raw stitch draft #01 ~
+        </div>
+
+        <svg viewBox="0 0 340 120" class="w-full h-28 mx-auto overflow-visible" aria-hidden="true">
+          <!-- Hand-drawn fabric swatch outline -->
+          <path
+            d="M 28 24 Q 90 19, 170 23 T 312 21 L 308 98 Q 220 102, 160 97 T 24 99 Z"
+            fill="none"
+            stroke="#ffffff"
+            stroke-opacity="0.22"
+            stroke-width="1.4"
+            stroke-dasharray="5 5"
+          />
+
+          <!-- Scribbled looping thread -->
+          <path
+            d="M 38 72 C 70 30, 105 95, 145 55 C 180 20, 215 88, 252 46 C 272 25, 292 52, 304 42"
+            fill="none"
+            stroke="#ffffff"
+            stroke-width="2"
+            stroke-linecap="round"
+            class="animate-draw"
+          />
+
+          <!-- Secondary loose sketch thread -->
+          <path
+            d="M 42 76 C 85 92, 120 42, 165 78 C 205 104, 245 36, 296 54"
+            fill="none"
+            stroke="#ffffff"
+            stroke-opacity="0.35"
+            stroke-width="1.1"
+            stroke-dasharray="3 4"
+            stroke-linecap="round"
+          />
+
+          <!-- Scribbled Sewing Needle -->
+          <g class="animate-needle-sketch">
+            <line x1="252" y1="74" x2="306" y2="26" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" />
+            <ellipse cx="258" cy="69" rx="4.2" ry="1.8" transform="rotate(-42 258 69)" fill="#060606" stroke="#ffffff" stroke-width="1.2" />
+            <!-- Needle sparkle marks -->
+            <path d="M312 18 L318 14 M314 26 L322 25 M305 15 L306 8" stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" />
+          </g>
+        </svg>
+
+        <div class="mt-2 flex items-center justify-between text-[11px] text-neutral-400 font-hand tracking-wider">
+          <span>hand-inked</span>
+          <span>100% raw cotton</span>
+        </div>
+      </div>
+
+      <!-- Brand Title -->
+      <h1 class="font-scribble text-5xl sm:text-7xl tracking-[0.18em] uppercase text-white mb-5">
+        CLAUFE
+      </h1>
+
+      <!-- Requested Headline -->
+      <p class="font-hand text-2xl sm:text-4xl text-white leading-snug max-w-xl mb-3">
+        &ldquo;We&rsquo;re Threading the Needle. You&rsquo;re About to Wear the Difference.&rdquo;
+      </p>
+
+      <!-- Stitching Status Subtext -->
+      <p class="text-xs sm:text-sm text-neutral-400 tracking-wide max-w-md mb-9 leading-relaxed">
+        We are stitching fabric right now &mdash; will let you know as soon as we are live.
+      </p>
+
+      <!-- Notify Button & Appearing Email Box -->
+      <div class="w-full max-w-md flex flex-col items-center">
+        <button
+          id="notifyBtn"
+          type="button"
+          class="sketch-btn bg-white text-black px-9 py-3.5 text-xs sm:text-sm font-bold tracking-[0.22em] uppercase cursor-pointer inline-flex items-center gap-3 hover:bg-black hover:text-white"
+        >
+          <span>Notify Me</span>
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14" />
+            <path d="m13 6 6 6-6 6" />
+          </svg>
+        </button>
+
+        <!-- Appearing Email Input Box -->
+        <div id="emailBox" class="reveal-box w-full mt-5">
+          <form id="notifyForm" novalidate class="sketch-box bg-black p-5 sm:p-6 text-left">
+            <div class="flex items-center justify-between mb-3">
+              <label for="emailInput" class="font-hand text-xl text-white tracking-wide">
+                Drop your email for early access:
+              </label>
+              <button
+                id="closeBoxBtn"
+                type="button"
+                class="text-[11px] uppercase tracking-widest text-neutral-400 hover:text-white cursor-pointer"
+              >
+                [x]
+              </button>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+              <input
+                id="emailInput"
+                type="email"
+                required
+                autocomplete="email"
+                placeholder="you@domain.com"
+                class="sketch-input flex-1 bg-black px-4 py-3 text-sm text-white placeholder-neutral-500 focus:outline-none"
+              />
+              <button
+                id="submitBtn"
+                type="submit"
+                class="sketch-btn bg-white text-black px-6 py-3 text-xs font-bold tracking-[0.2em] uppercase cursor-pointer hover:bg-black hover:text-white whitespace-nowrap"
+              >
+                Submit
+              </button>
+            </div>
+
+            <p id="formFeedback" class="mt-3 text-xs min-h-[1rem] text-neutral-300"></p>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Clean Minimal Footer (No Excel UI exposed to viewers) -->
+  <footer class="w-full px-6 sm:px-10 py-5 border-t border-white/15 border-dashed flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] tracking-[0.2em] uppercase text-neutral-500">
+    <span>&copy; <span id="yearSpan"></span> CLAUFE</span>
+    <span class="font-hand text-base tracking-wider lowercase text-neutral-400">crafted in monochrome</span>
+  </footer>
+
+  <script>
+    (function () {
+      // Paste your Google Apps Script Web App URL here to send signups directly to your "CLAUFE Waitlist" Google Sheet:
+      const GOOGLE_SCRIPT_URL = '';
+
+      const yearSpan = document.getElementById('yearSpan');
+      const notifyBtn = document.getElementById('notifyBtn');
+      const emailBox = document.getElementById('emailBox');
+      const closeBoxBtn = document.getElementById('closeBoxBtn');
+      const notifyForm = document.getElementById('notifyForm');
+      const emailInput = document.getElementById('emailInput');
+      const submitBtn = document.getElementById('submitBtn');
+      const formFeedback = document.getElementById('formFeedback');
+
+      yearSpan.textContent = new Date().getFullYear();
+
+      notifyBtn.addEventListener('click', function () {
+        if (!emailBox.classList.contains('is-open')) {
+          emailBox.classList.add('is-open');
+          notifyBtn.classList.add('hidden');
+          setTimeout(function () {
+            emailInput.focus();
+          }, 220);
+        }
+      });
+
+      closeBoxBtn.addEventListener('click', function () {
+        emailBox.classList.remove('is-open');
+        notifyBtn.classList.remove('hidden');
+        formFeedback.textContent = '';
+      });
+
+      notifyForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const email = emailInput.value.trim().toLowerCase();
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailPattern.test(email)) {
+          formFeedback.textContent = 'Please enter a valid email address.';
+          emailInput.focus();
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+        formFeedback.textContent = '';
+
+        const payload = {
+          timestamp: new Date().toISOString(),
+          email: email,
+          source: 'CLAUFE Pre-Launch',
+          status: 'Subscribed'
+        };
+
+        if (GOOGLE_SCRIPT_URL) {
+          try {
+            await fetch(GOOGLE_SCRIPT_URL, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+          } catch (err) {
+            // Keep smooth UX even on network hiccups
+          }
+        }
+
+        emailInput.value = '';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit';
+        formFeedback.textContent = "You're on the list. We'll reach out as soon as CLAUFE goes live.";
+      });
+    })();
+  </script>
+</body>
+</html>
